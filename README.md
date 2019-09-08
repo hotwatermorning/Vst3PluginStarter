@@ -18,6 +18,8 @@ cd gradle
 
 # Now the project file is generated.
 # Open the project and modify it in the IDE or in your preferred text editor.
+# Don't forget to replace class ids of your plugin.
+# (`generate_uuid` task is provided for this purpose.)
 
 # You can build the plugins with both the IDE or the `build` task.
 ./gradlew build
