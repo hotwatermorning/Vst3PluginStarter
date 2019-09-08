@@ -1,0 +1,3 @@
+build_*/
+gradle/.gradle
+plugins/build

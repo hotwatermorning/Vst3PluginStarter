@@ -1,0 +1,284 @@
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+
+def ensure_property(def obj, String keyname, List candidates, Integer default_value_index = 0)
+{
+  if(!obj.hasProperty(keyname)) {
+    obj.metaClass.setProperty(keyname, candidates[default_value_index])
+  }
+
+  assert(candidates.contains(obj.getProperty(keyname)))
+}
+
+def build_configs = ["Debug", "Release", "MinSizeRel", "RelWithDebInfo"]
+
+// Property about build configuration
+ensure_property(project, "config", build_configs)
+// Property about ccache.
+// (note: ccache is not used if not installed even if this property is true.)
+
+ensure_property(project, "msvc_version", ["Visual Studio 16 2019", "Visual Studio 15 2017"])
+
+ext {
+  isWindows = { return System.properties['os.name'].toLowerCase().startsWith("windows") }
+  get_build_dir_name = { conf -> return "build_${conf.toLowerCase()}" }
+  build_dir_name = get_build_dir_name(project.config)
+  all_build_target = "ALL_BUILD"
+  parallel_option = "-j ${Runtime.getRuntime().availableProcessors() + 1}"
+  cmake_generator = (isWindows() ? "-G \"${project.msvc_version}\" -A x64" : "-G Xcode")
+}
+
+//! @param options is a map to customize getenv behavior.
+//! these options are supported.
+//! * null_as_empty. (Boolean, default is false)
+//! * trim. (Boolean. default is false)
+def getenv = { String key, Map options = [:] ->
+  def tmp = java.lang.System.getenv()[key]
+  if(options["null_as_empty"]) {
+    if(tmp == null) { tmp = "" }
+  }
+
+  if(options["trim"]) {
+    tmp = tmp.trim()
+  }
+}
+
+// 渡された文字列を空白で区切って、単語のリストとして返す。
+// ただし、引用符(`'` or `"`)で囲まれた範囲は空白で区切らずに、ひと続きの文字列とみなす
+// 引用符で囲まれた範囲内であっても、`\"`のようにエスケープされているものや、
+// 引用符の種類が異なるものは引用符の終わりとはみなさない。
+// ex) tokenize(/abc def "ghi \"jkl ' mno" pqr/) => [abc, def, "ghi \"jkl ' mno", pqr]
+// @return [
+//    tokens: <tokenized string list if succeeded, [] otherwise>,
+//    error: <error msg if something failed, "" otherwise.>
+// ]
+def tokenize_with_error(String src)
+{
+  logger.info("start tokenize: ${src}")
+
+  def separator_char = ' '
+  def escape_char = '\\'
+  def quote_chars = [/'/, /"/]
+
+  String token = ""
+  def output = []
+  def is_escaped = false
+  def found_quote = ""
+  def quoted = { found_quote != "" }
+
+  src.each { it ->
+    logger.debug("it: ${it}")
+
+    if(quoted()) {
+      if(is_escaped) {
+        is_escaped = false
+        logger.debug("\t--1")
+      } else if(it == escape_char) {
+        is_escaped = true
+        logger.debug("\t--2")
+      } else if(it == found_quote) {
+        found_quote = ""
+        logger.debug("\t--3")
+        return
+      }
+    } else {
+      if(quote_chars.contains(it)) {
+        found_quote = it
+        logger.debug("\t--4")
+        return
+      } else if(it == separator_char) {
+        if(token != "") {
+          logger.debug("\t--5")
+          output << token
+          token = ""
+        }
+        return
+      }
+    }
+
+    token += it
+  }
+
+  if(quoted()) {
+    return [ tokens: [], error: "quotation is not closed." ]
+  }
+
+  if(token != "") { output << token }
+  return [ tokens: output, error: "" ]
+}
+
+def tokenize(String str)
+{
+  def result = tokenize_with_error(str)
+  assert(result.error == "")
+  return result.tokens
+}
+
+class ExecutionResult
+{
+  def ExecutionResult(int exit_value, String text, String error_text)
+  {
+    this.exit_value = exit_value
+    this.text = text
+    this.error_text = error_text
+  }
+
+  int exitValue() { return exit_value }
+  boolean succeeded() { return exit_value == 0 }
+  boolean failed() { return exit_value != 0 }
+
+  String getText() { return text }
+  String getErrorText() { return error_text }
+
+  int exit_value
+  String text
+  String error_text
+}
+
+//! execute specified command and wait for finish the execution.
+//! @param command is a string consists of executable command and its parameters.
+//! @param working_dir is the working directory for the executable.
+//! @param env_vars is environment variables as a list of key:value pair. this parameter may be nil.
+def execute_may_fail = { String command, def working_dir = ".", Map env_vars = [:] ->
+  if(isWindows()) {
+    command = "cmd /c chcp 65001 > nul & " + command.toString()
+  }
+
+  def tmp = tokenize(command)
+  println "${tmp} @ '${working_dir}' (${env_vars})"
+
+  def pb = new ProcessBuilder(tokenize(command))
+  pb.directory(file(working_dir).getAbsoluteFile())
+
+  if(env_vars) {
+    def pb_env = pb.environment()
+    env_vars.each { key, value -> pb_env.put(key, value) }
+  }
+
+  def process = pb.start()
+  String text = ""
+  String error_text = ""
+
+  def service = Executors.newCachedThreadPool()
+
+  // these outputs may be displayed earlier than the outputs of main thread.
+  service.execute {
+    process.in.eachLine { line ->
+      text += line + "\n"
+      System.out.&println line
+    }
+  }
+
+  // these outputs may be displayed earlier than the outputs of main thread.
+  service.execute {
+    process.err.eachLine { line ->
+      error_text += line + "\n"
+      System.err.&println line
+    }
+  }
+
+  process.waitFor()
+
+  service.shutdown()
+  service.awaitTermination(1, TimeUnit.MINUTES)
+
+  return new ExecutionResult(process.exitValue(), text, error_text)
+}
+
+//! similar to execute_may_fail but this function fails if the command finished with an exit value of non zero.
+def execute = { String params, def working_dir = ".", Map env_vars = [:] ->
+  def result = execute_may_fail(params, working_dir, env_vars)
+  assert result.succeeded(), "undesirable exit value ${result.exitValue()}"
+  return result
+}
+
+task update_submodules {
+  group = "other"
+  doLast {
+    execute("git submodule update --init --recursive", "..")
+  }
+}
+
+// 指定したディレクトリが存在しなければ作成し、成功か失敗かをbooleanで返す
+// 存在する場合は何もせずにtrueを返す
+def mkdirs_if_needed = { def path ->
+  def f = file(path)
+  if(f.exists()) { return true }
+
+  return f.mkdirs()
+}
+
+task prepare_project {
+  group = "build"
+  doLast {
+    println "Build VST3 SDK"
+    def source_cmake_dir = file("../ext/vst3sdk").getAbsolutePath()
+    def build_dir = file("../${build_dir_name}").getAbsolutePath()
+    def plugins_src_path = file("../plugins").getAbsolutePath()
+    assert(mkdirs_if_needed(build_dir))
+
+    println "plugins src path: ${plugins_src_path}"
+
+    // VST3SDKは、makeのinstallターゲットを用意しない
+    execute(
+      " cmake ${cmake_generator} " +
+      " -DCMAKE_BUILD_TYPE=${project.config} " +
+      " -DSMTG_ADD_VST3_PLUGINS_SAMPLES=OFF " +
+      " -DSMTG_ADD_VST3_HOSTING_SAMPLES=OFF " +
+      " -DSMTG_ADD_VSTGUI=ON " +
+      " -DSMTG_MYPLUGINS_SRC_PATH=${plugins_src_path} " +
+      " ${source_cmake_dir} "
+      , build_dir)
+  }
+}
+prepare_project.mustRunAfter update_submodules
+
+task build {
+  group = "build"
+  doLast {
+    println "Build VST3 SDK"
+    def build_dir = file("../${build_dir_name}").getAbsolutePath()
+    assert(mkdirs_if_needed(build_dir))
+
+    execute("cmake --build . ${parallel_option} --target ${all_build_target} --config ${project.config}", build_dir)
+  }
+}
+
+//! 指定したディレクトリの直下にあるディレクトリのうち、
+//! 現在のビルド構成によって決まるディレクトリ名と同じディレクトリがあれば、それを削除する。
+def delete_build_dir(def target_dir, def dir_name) {
+  def target_path = new File(target_dir, dir_name)
+  if(target_path.exists()) {
+    println "dir path to delete: '${target_path}'"
+    target_path.deleteDir()
+  }
+}
+
+task clean_submodules {
+  group = "clean"
+  doLast {
+    file("../ext").eachDir {
+      delete_build_dir(it, build_dir_name)
+    }
+  }
+}
+
+task clean_project {
+  group = "clean"
+  doLast {
+    delete_build_dir("..", build_dir_name)
+  }
+}
+
+task clean_all {
+  group = "clean"
+  dependsOn { [clean_submodules, clean_project] }
+}
+
+task build_all {
+  group = "build"
+  dependsOn { [update_submodules, prepare_project, build] }
+}
+
+defaultTasks 'build_all'
+
