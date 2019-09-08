@@ -244,6 +244,52 @@ task build {
   }
 }
 
+task add_target {
+  group = "setup"
+  doLast {
+    def target_name = findProperty("target_name")
+    def use_vstgui = findProperty("use_vstgui")
+
+    assert(target_name != null && use_vstgui != null)
+    assert(use_vstgui == "true" || use_vstgui == "false")
+
+    def src_dir = ""
+    if(use_vstgui == "true") {
+      src_dir = file("../plugins/helloworld")
+    } else {
+      src_dir = file("../plugins/helloworld_with_VSTGUI")
+    }
+    def dest_dir = file("../plugins/${target_name}")
+
+    println src_dir
+    println dest_dir
+
+    if(dest_dir.exists()) {
+      System.err.&println "Error: ${dest_dir} is already existing."
+      assert(false)
+    }
+
+    copy {
+      from src_dir
+      into dest_dir
+    }
+
+    def cmakelists = new File(dest_dir, "CMakeLists.txt")
+    def lines = new File(dest_dir, "CMakeLists.txt").readLines()
+    lines.replaceAll { line ->
+      return line.replaceAll(/^(\s*)set\(target\s+[^\)]+\)/, "\$1set(target ${target_name})")
+    }
+    def str = lines.join("\n")
+    cmakelists.write(str)
+  }
+
+  description = """|add a new plugin target.
+                   |Properties:
+                   |  target_name: <target name>
+                   |  use_vstgui: <true or false>""".stripMargin()
+}
+
+
 //! 指定したディレクトリの直下にあるディレクトリのうち、
 //! 現在のビルド構成によって決まるディレクトリ名と同じディレクトリがあれば、それを削除する。
 def delete_build_dir(def target_dir, def dir_name) {
