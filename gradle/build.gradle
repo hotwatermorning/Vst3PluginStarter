@@ -249,9 +249,9 @@ task add_target {
   group = "setup"
   doLast {
     def target_name = findProperty("target_name")
-    def use_vstgui = findProperty("use_vstgui")
+    def use_vstgui = findProperty("use_vstgui") ?: "false"
 
-    assert(target_name != null && use_vstgui != null)
+    assert(target_name != null)
     assert(use_vstgui == "true" || use_vstgui == "false")
 
     def src_dir = ""
