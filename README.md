@@ -1,5 +1,11 @@
 # Vst3PluginStarter
 
+## Prerequisites
+
+* Java JRE (or JDK) version 8 or later.
+* Xcode 10 or later (for macOS).
+* Visual Studio 2017 or later (for Windows).
+
 ## How to use
 
 ```sh
@@ -10,7 +16,7 @@ cd gradle
 
 # add build target to create a new plugin.
 # To create a plugin which supports a dedicated plugin editor, set `-Puse_vstgui=true`.
-./gradlew add_target -Ptarget_name=MyPlugin [-Puse_vstgui=true]
+./gradlew add_target -Ptarget_name=<plugin name (*1)> [-Puse_vstgui=true]
 
 # `prepare_project` task generates an IDE project file.
 # To generate a project file for Visual Studio 2017 instead of Visual Studio 2019, set `-Pmsvc_version="Visual Studio 15 2017"`
@@ -25,11 +31,13 @@ cd gradle
 ./gradlew build
 ```
 
-## utility task
+\[*1\]: plugin name should not contain any whitespaces or tab characters.
+
+## Utility task
 
 ```sh
 # generate VST-MA ids which are formatted to pass to a constructor of FUID.
-./gradlew generate_uuid
+./gradlew generate_uuid [-Pnumber=<n>]
 ```
 
 ## License
