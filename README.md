@@ -15,8 +15,8 @@ cd /path/to/Vst3PluginStarter/gradle
 ./gradlew update_submodules
 
 # Add a build target to create a new plugin.
-# To create a plugin which supports a dedicated plugin editor, set `-Puse_vstgui=true`.
-./gradlew add_target -Ptarget_name=<plugin name (*1)> [-Puse_vstgui=true]
+# To create a plugin which supports a dedicated plugin editor, set `-Puse_vstgui` as true.
+./gradlew add_target -Ptarget_name=<plugin name (*1)> -Puse_vstgui=<true or false>
 
 # `prepare_project` task generates an IDE project file.
 # To generate a project file for Visual Studio 2017 instead of Visual Studio 2019, set `-Pmsvc_version="Visual Studio 15 2017"`

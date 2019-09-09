@@ -249,9 +249,9 @@ task add_target {
   group = "setup"
   doLast {
     def target_name = findProperty("target_name")
-    def use_vstgui = findProperty("use_vstgui") ?: "false"
+    def use_vstgui = findProperty("use_vstgui")
 
-    assert(target_name != null)
+    assert(target_name != null && use_vstgui != null)
     assert(use_vstgui == "true" || use_vstgui == "false")
 
     def src_dir = ""
@@ -286,8 +286,8 @@ task add_target {
 
   description = """|add a new plugin target.
                    |Properties:
-                   |  target_name: <target name>
-                   |  use_vstgui: <true or false>""".stripMargin()
+                   |  target_name: target name. required.
+                   |  use_vstgui: true or false. required.""".stripMargin()
 }
 
 task generate_uuid {
