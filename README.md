@@ -9,29 +9,31 @@
 ## How to use
 
 ```sh
-cd gradle
+cd /path/to/Vst3PluginStarter/gradle
 
-# update submodules
+# Update submodules
 ./gradlew update_submodules
 
-# add build target to create a new plugin.
+# Add a build target to create a new plugin.
 # To create a plugin which supports a dedicated plugin editor, set `-Puse_vstgui=true`.
 ./gradlew add_target -Ptarget_name=<plugin name (*1)> [-Puse_vstgui=true]
 
 # `prepare_project` task generates an IDE project file.
 # To generate a project file for Visual Studio 2017 instead of Visual Studio 2019, set `-Pmsvc_version="Visual Studio 15 2017"`
-./gradlew prepare_project [-Pmsvc_version=<msvc version>]
+./gradlew prepare_project [-Pconfig=<build configuration (*2)>] [-Pmsvc_version=<msvc version>]
 
-# Now the project file is generated.
+# Now the project file is generated in `../build_<build configuration>`.
 # Open the project and modify it in the IDE or in your preferred text editor.
 # Don't forget to replace class ids of your plugin.
 # (`generate_uuid` task is provided for this purpose.)
 
 # You can build the plugins with both the IDE or the `build` task.
-./gradlew build
+./gradlew build [-Pconfig=<build configuration>]
 ```
 
-\[*1\]: plugin name should not contain any whitespaces or tab characters.
+(*1): The plugin name should not contain any whitespaces or tab characters.
+
+(*2): Build configuration is either "Debug", "Release", "MinSizeRel", or "RelWithDebInfo". "Debug" is default.
 
 ## Utility task
 
