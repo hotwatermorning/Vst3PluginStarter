@@ -256,14 +256,14 @@ task add_target {
 
     def src_dir = ""
     if(use_vstgui == "true") {
-      src_dir = file("../plugins/helloworld")
-    } else {
       src_dir = file("../plugins/helloworld_with_VSTGUI")
+    } else {
+      src_dir = file("../plugins/helloworld")
     }
     def dest_dir = file("../plugins/${target_name}")
 
-    println src_dir
-    println dest_dir
+    println "from: ${src_dir}"
+    println "to: ${dest_dir}"
 
     if(dest_dir.exists()) {
       System.err.&println "Error: ${dest_dir} is already existing."
