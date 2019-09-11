@@ -228,7 +228,7 @@ task prepare_project {
       " -DSMTG_ADD_VST3_HOSTING_SAMPLES=OFF " +
       " -DSMTG_ADD_VSTGUI=ON " +
       " -DSMTG_MYPLUGINS_SRC_PATH=${plugins_src_path} " +
-      " -DSMTG_CREATE_PLUGIN_LINK=ON " +
+      " -DSMTG_CREATE_PLUGIN_LINK=${isWindows() ? 'OFF' : 'ON'} " +
       " ${source_cmake_dir} "
       , build_dir)
   }
