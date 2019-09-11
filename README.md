@@ -37,7 +37,7 @@ cd /path/to/Vst3PluginStarter/gradle
 ./gradlew build [-Pconfig=<build configuration>]
 
 # The plugin will be created in `../build_<build configuration>/VST3/<build configuration>/`,
-# The symbolic links to the plugins are also created in the user VST3 directory (macOS only)
+# The symbolic link files to the plugins are also created in the user VST3 directory (macOS only)
 # (i.e. `~/Library/Audio/Plug-Ins/VST3`).
 ```
 
