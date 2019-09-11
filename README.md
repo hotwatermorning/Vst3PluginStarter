@@ -1,5 +1,10 @@
 # Vst3PluginStarter
 
+Vst3PluginStarter prepares build targets to create new VST3 plugins.
+
+More precisely, Vst3PluginStarter do the steps from 1 to 5 of "How to add/create your own VST 3 Plug-ins" in the VST3 SDK documents.
+(see: https://steinbergmedia.github.io/vst3_doc/ -> "VST3 API" -> "How to add/create your own VST 3 Plug-ins")
+
 ## Prerequisites
 
 * Java JRE (or JDK) version 8 or later.
@@ -24,11 +29,16 @@ cd /path/to/Vst3PluginStarter/gradle
 
 # Now the project file is generated in `../build_<build configuration>`.
 # Open the project and modify it in the IDE or in your preferred text editor.
+# (i.e. do the steps from 6 of "How to add/create your own VST 3 Plug-ins" in the VST3 SDK documents".)
 # Don't forget to replace class ids of your plugin.
 # (`generate_uuid` task is provided for this purpose.)
 
 # You can build the plugins with both the IDE or the `build` task.
 ./gradlew build [-Pconfig=<build configuration>]
+
+# The plugin will be created in `../build_<build configuration>/VST3/<build configuration>/`,
+# The symbolic links to the plugins are also created in the user VST3 directory (macOS only)
+# (i.e. `~/Library/Audio/Plug-Ins/VST3`).
 ```
 
 (*1): The plugin name should not contain any whitespaces or tab characters.
