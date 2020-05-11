@@ -1,3 +1,7 @@
 build_*/
 gradle/.gradle
 plugins/build
+plugins/*
+
+!plugins/helloworld_with_VSTGUI
+!plugins/helloworld
